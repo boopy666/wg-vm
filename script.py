@@ -5,9 +5,6 @@ import os
 import sys
 import pandas as pd
 
-# Load the spreadsheet data into a pandas DataFrame
-df = pd.read_excel('weight_change.xlsx', sheet_name='Sheet1')
-
 # Find the path to the 'modules' directory relative to the current file
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)  # Move up to the 'extensions' directory
@@ -16,6 +13,9 @@ modules_path = os.path.join(base_dir, 'modules')
 
 if modules_path not in sys.path:
     sys.path.append(modules_path)
+
+# Load the spreadsheet data into a pandas DataFrame
+df = pd.read_excel(f'{current_dir}/weight_change.xlsx', sheet_name='Sheet1')
 
 from chat import generate_chat_prompt
 
