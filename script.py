@@ -224,7 +224,7 @@ def input_modifier(string, state, is_chat=False):
 
     return string
 
-def stat_prompt(physical_attributes):
+def stat_prompt():
     feet, inches = inches_to_feet_and_inches(character_stats.height_inches)
     stats_context = (
         f"""
