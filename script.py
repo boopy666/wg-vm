@@ -223,7 +223,7 @@ def input_modifier(string, state, is_chat=False):
 
     return string
 
-def stat_prompt():
+def stat_prompt(physical_attributes):
     feet, inches = inches_to_feet_and_inches(character_stats.height_inches)
     stats_context = (
         f"""
@@ -243,19 +243,6 @@ def chat_input_modifier(text, visible_text, state):
     end_day_called = "==END_DAY==" in text
     food_matches = re.findall(r"\{([^}]+):(\d+)\}", text)
     is_story = "STORY:" in text
-
-    # Calculate BMI 
-    bmi = character_stats.calculate_bmi()
-    
-    # Look up the row corresponding to the calculated BMI
-    row = df.loc[df['BMI'] == bmi]
-    
-    if not row.empty:
-        # Extract the relevant data from the row
-        data = row['Data'].values[0]
-        
-        # Append the data to the text that will be used internally by the LLM
-        text += f"\n[Current physical appearance stats: {data}]"
 
     # Process end day command
     end_day_message = []
@@ -287,13 +274,26 @@ def chat_input_modifier(text, visible_text, state):
     if food_messages:
         stats_context += "\n".join(food_messages)
 
+    bmi = character_stats.calculate_bmi()
+    
+    # Look up the row corresponding to the calculated BMI
+    row = df.loc[df['BMI'] == bmi]
+    
+    if not row.empty:
+        # Extract the relevant data from the row
+        data = row['Physical Characteristics'].values[0]
+        
+        # Append the data to the text that will be used internally by the LLM
+        physical_attributes = f"\n{character_stats.name} physical appearance stats: {data}"
+        text += f"[{physical_attributes}]"
+    
     # Check for story and modify text accordingly
     if is_story and is_new_chat:
         modified_text = f"{stats_context}\n{text}"
-        modified_visible_text = f"{stats_context}\n{visible_text}"
+        modified_visible_text = f"{stats_context}\n{physical_attributes}\n{visible_text}"
     elif is_new_chat or end_day_called or food_matches or character_stats.inject_stats:
         modified_text = f"{stats_context}\n{text}"
-        modified_visible_text = f"{stats_context}\n{visible_text}"
+        modified_visible_text = f"{stats_context}\n{physical_attributes}\n{visible_text}"
     else:
         modified_text = text
         modified_visible_text = visible_text
