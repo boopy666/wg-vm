@@ -3,6 +3,7 @@ import re
 import gradio as gr
 import os
 import sys
+import openpyxl
 import pandas as pd
 
 # Find the path to the 'modules' directory relative to the current file
