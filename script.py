@@ -245,7 +245,7 @@ def chat_input_modifier(text, visible_text, state):
     is_story = "STORY:" in text
 
     if 'origin_bmi' not in state:
-        state['origin_bmi'] = character_stats.calculate_bmi()
+        state['origin_bmi'] = float(character_stats.calculate_bmi())
 
     # Process end day command
     end_day_message = []
@@ -278,7 +278,7 @@ def chat_input_modifier(text, visible_text, state):
         stats_context += "\n".join(food_messages)
 
     
-    bmi = character_stats.calculate_bmi()
+    bmi = float(character_stats.calculate_bmi())
     
     # Initialize physical_attributes with a default value
     physical_attributes = ""
