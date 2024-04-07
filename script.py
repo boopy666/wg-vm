@@ -6,7 +6,7 @@ import sys
 import pandas as pd
 
 # Load the spreadsheet data into a pandas DataFrame
-df = pd.read_csv('weight_change.csv')
+df = pd.read_excel('weight_change.xlsx', sheet_name='Sheet1')
 
 # Find the path to the 'modules' directory relative to the current file
 current_dir = os.path.dirname(os.path.abspath(__file__))
