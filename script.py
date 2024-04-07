@@ -244,6 +244,9 @@ def chat_input_modifier(text, visible_text, state):
     food_matches = re.findall(r"\{([^}]+):(\d+)\}", text)
     is_story = "STORY:" in text
 
+    if 'origin_bmi' not in state:
+        state['origin_bmi'] = float(character_stats.calculate_bmi())
+
     # Process end day command
     end_day_message = []
     if end_day_called:
@@ -273,22 +276,28 @@ def chat_input_modifier(text, visible_text, state):
     
     if food_messages:
         stats_context += "\n".join(food_messages)
+
     
-    bmi = character_stats.calculate_bmi()
+    bmi = float(character_stats.calculate_bmi())
     
     # Initialize physical_attributes with a default value
     physical_attributes = ""
     
-    # Look up the row corresponding to the calculated BMI
-    row = df.loc[df['BMI'] == bmi]
-    
-    if not row.empty:
-        # Extract the relevant data from the row
-        data = row['Physical Characteristics'].values[0]
+    # Check if the BMI value has been incremented by +1
+    if bmi >= float(state['origin_bmi']) + 1:
+        # Look up the row corresponding to the calculated BMI
+        row = df.loc[df['BMI'] == bmi]
         
-        # Assign the data to physical_attributes
-        physical_attributes = f"\n{character_stats.name} physical appearance stats: {data}"
-        text += f"[{physical_attributes}]"
+        if not row.empty:
+            # Extract the relevant data from the row
+            data = row['Physical Characteristics'].values[0]
+            
+            # Assign the data to physical_attributes
+            physical_attributes = f"\n{character_stats.name} physical appearance stats: {data}"
+            text += f"[{physical_attributes}]"
+            
+            # Update the origin_bmi in the state
+            state['origin_bmi'] = bmi
     
     # Check for story and modify text accordingly
     if is_story and is_new_chat:
