@@ -77,6 +77,10 @@ class CharacterStats:
                 return f"{bmi_value:.1f} ({categories[i]})"
         return f"{bmi_value:.1f} ({categories[-1]})"
 
+    def bmi_int(self):
+        bmi_value = (self.weight / (self.height_inches ** 2)) * 703
+        return int(bmi_value)
+
     def calculate_bmr(self):
         return 655 + (4.35 * self.weight) + (4.7 * self.height_inches) - (4.7 * self.age)
 
@@ -274,7 +278,7 @@ def chat_input_modifier(text, visible_text, state):
     if food_messages:
         stats_context += "\n".join(food_messages)
     
-    bmi = character_stats.calculate_bmi()
+    bmi = character_stats.bmi_int()
     
     # Initialize physical_attributes with a default value
     physical_attributes = ""
