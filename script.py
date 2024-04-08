@@ -288,7 +288,7 @@ def chat_input_modifier(text, visible_text, state):
     
     if not row.empty:
         # Extract the relevant data from the row
-        data = row['Physical Characteristics'].values[0]
+        data = row['Phys'].values[0]
         
         # Assign the data to physical_attributes
         physical_attributes = f"\n{character_stats.name} physical appearance stats: {data}"
