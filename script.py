@@ -291,7 +291,8 @@ def chat_input_modifier(text, visible_text, state):
         data = row['Phys'].values[0]
         
         # Assign the data to physical_attributes
-        physical_attributes = f"\n[{character_stats.name} physical appearance stats: {eval(f'f"""{data}"""')}]"
+        physical = f"{character_stats.name} physical appearance stats: {eval(f'f"""{data}"""')}"
+        physical_attributes = f"\n[{physical}]"
     
     # Check for story and modify text accordingly
     if is_new_chat or end_day_called or character_stats.inject_stats:
