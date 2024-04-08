@@ -280,7 +280,7 @@ def chat_input_modifier(text, visible_text, state):
     physical_attributes = ""
     
     # Look up the row corresponding to the calculated BMI
-    row = df.loc[df['BMI'] == bmi]
+    row = df.loc[df['BMI'] == int(bmi)]
     
     if not row.empty:
         # Extract the relevant data from the row
@@ -300,7 +300,10 @@ def chat_input_modifier(text, visible_text, state):
     else:
         modified_text = text
         modified_visible_text = visible_text
-        
+
+    text = modified_text
+    visible_text = modified_visible_text
+    
     return text, visible_text
 
 def ui():
