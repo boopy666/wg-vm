@@ -12,6 +12,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)  # Move up to the 'extensions' directory
 base_dir = os.path.dirname(parent_dir)  # Move up to the base 'text-generation-webui' directory
 modules_path = os.path.join(base_dir, 'modules')
+images_dir = os.path.join(current_dir, 'images')
 
 if modules_path not in sys.path:
     sys.path.append(modules_path)
