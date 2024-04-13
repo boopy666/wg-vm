@@ -5,14 +5,12 @@ import os
 import sys
 import openpyxl
 import pandas as pd
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 # Find the path to the 'modules' directory relative to the current file
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)  # Move up to the 'extensions' directory
 base_dir = os.path.dirname(parent_dir)  # Move up to the base 'text-generation-webui' directory
 modules_path = os.path.join(base_dir, 'modules')
-images_dir = os.path.join(current_dir, 'images')
 
 if modules_path not in sys.path:
     sys.path.append(modules_path)
@@ -21,9 +19,6 @@ if modules_path not in sys.path:
 df = pd.read_excel(f'{current_dir}/weight_change.xlsx', sheet_name='Sheet1')
 
 from chat import generate_chat_prompt
-
-model = AutoModelForSequenceClassification.from_pretrained("hakonmh/sentiment-xdistil-uncased")
-tokenizer = AutoTokenizer.from_pretrained("hakonmh/sentiment-xdistil-uncased")
 
 # extension parameters
 params = {
@@ -232,61 +227,6 @@ def input_modifier(string, state, is_chat=False):
 
     return string
 
-# Define a function to get the base64 string of the image
-def get_image_base64(image_path):
-    with Image.open(image_path) as image:
-        buffered = io.BytesIO()
-        image.save(buffered, format="PNG")  # Or the appropriate format of your image
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-    return img_str
-
-
-def sentiment_code(label):
-    match label:
-        case "Positive":
-            # Positive emotions
-            emotion_number = 1
-        case "Negative":
-            # Negative/angry emotions
-            emotion_number = 3
-        case "Neutral":
-            # Neutral emotion
-            emotion_number = 9
-        case _:
-            # Handle any other value
-            emotion_number = 0
-    return emotion_number
-
-def get_image_path(code):
-    number = character_stats.weight - character_stats.start_weight
-    fullness = character_stats.fullness_percentage
-
-    # Limit the image index to the range of available images (0 to 250)
-    weight_index = min(max(number, 0), 250)
-
-    # Determine the fullness index based on the percentage range
-    if fullness <= 49:
-        fullness_index = 0
-    elif fullness <= 99:
-        fullness_index = 1
-    else:
-        fullness_index = 2
-
-    filename = f'fiona_{int(weight_index)}_{int(fullness_index)}_{code}.png'
-    file_path = os.path.join(images_dir, filename)
-    print(file_path)
-
-    # Check if the file exists before returning the path
-    if os.path.exists(file_path):
-        file_path = file_path.replace('\\', '/').replace('static/', '')
-        print(file_path)
-        return file_path
-    else:
-        # Handle the case where no image is available or the path is incorrect
-        print("No image available for the current weight.")
-        # Return a default image or a placeholder
-        return os.path.join(images_dir, 'default.png')
-
 def stat_prompt():
     feet, inches = inches_to_feet_and_inches(character_stats.height_inches)
     stats_context = (
@@ -301,25 +241,6 @@ def stat_prompt():
         """
     )
     return stats_context
-
-def output_modifier(string, state, is_chat=False):
-
-    # preforms sentimentanlysis on the inference
-    SENTENCE = string
-    inputs = tokenizer(SENTENCE, return_tensors="pt")
-    output = model(**inputs).logits
-    predicted_label = model.config.id2label[output.argmax(-1).item()]
-    emotion_code = sentiment_code(str(predicted_label))
-
-    # Embeds image into response
-    image_path = get_image_path(int(emotion_code))
-    print(image_path)
-    height = 500
-    width = int(height * 0.463)
-    image_base64 = get_image_base64(image_path)
-    string = f"<img src='data:image/png;base64,{image_base64}' style='max-width: {width}px; max-height: {height}px; width: auto; height: auto; display: block; margin-left: auto; margin-right: auto;'/><br>{string}"
-
-    return string
 
 def chat_input_modifier(text, visible_text, state):
     is_new_chat = len(state['history']['internal']) == 1
