@@ -4,6 +4,7 @@ import gradio as gr
 import os
 import sys
 import openpyxl
+import json
 import pandas as pd
 
 # Find the path to the 'modules' directory relative to the current file
@@ -31,7 +32,7 @@ charUI_stats = {
     "inject": False,
     "char_name": "Maddy",
     "starting_weight": 145,
-    "char_weight": 170,
+    "char_weight": 230,
     "char_calories": 0,
     "char_height": 67,
     "char_birth_year": 1997,
@@ -53,8 +54,8 @@ class CharacterStats:
     def __init__(self):
         self.age = 19
         self.name = "Maddy"
-        self.weight = 170  # lbs
-        self.start_weight = 170
+        self.weight = 230  # lbs
+        self.start_weight = 145
         self.height_inches = 67  # 5'7"
         self.current_calories = 0
         self.max_calories = 2100
@@ -67,6 +68,7 @@ class CharacterStats:
 
     def add_calories(self, calories):
         self.current_calories += calories
+
 
     def calculate_bmi(self):
         bmi_value = (self.weight / (self.height_inches ** 2)) * 703
@@ -208,6 +210,10 @@ def inches_to_feet_and_inches(inches):
     remaining_inches = inches % 12
     return int(feet), int(remaining_inches)
 
+def remove_bracketed_text(text):
+    return re.sub(r'\[.*?\]', '', text)
+
+
 def input_modifier(string, state, is_chat=False):
     if is_chat:
         if "==END_DAY==" in string:
@@ -228,19 +234,63 @@ def input_modifier(string, state, is_chat=False):
     return string
 
 def stat_prompt():
+
     feet, inches = inches_to_feet_and_inches(character_stats.height_inches)
     stats_context = (
         f"""
-        [Today's date is {character_stats.formatted_date()}.]
-        
-        [{character_stats.name}'s Stats:
-        {character_stats.name} is now {character_stats.age} years old, {feet}'{inches} inches tall, and currently weighs {character_stats.weight} lbs.
-        Her BMI is {character_stats.calculate_bmi()} and she has gained {int(character_stats.weight_diff)} lbs since {character_stats.start_date.strftime('%B %d, %Y')}.
-        So far she has consumed {int(character_stats.current_calories)} out of {character_stats.max_calories} calories today, leaving her feeling {character_stats.calculate_fullness()}.
-        She currently wears a sized {character_stats.shirt_size} shirt, and has a pant size of {character_stats.pant_size} US women's.]
+        [{character_stats.name}'s Stats]
+        [Date: {character_stats.formatted_date()}]
+        [Age: {character_stats.age} years old]
+        [Height: {feet}'{inches} inches tall]
+        [Weight: {character_stats.weight} lbs]
+        [Weight Gained: {int(character_stats.weight_diff)} lbs since {character_stats.start_date.strftime('%B %d, %Y')}]
+        [Fullness: {character_stats.calculate_fullness()}]
         """
     )
     return stats_context
+
+def history_modifier(history):
+
+    # Convert the history to a string
+    history_str = json.dumps(history)
+
+    # Find the start and end positions of the "Maddy's Stats" block
+    start_pos = history_str.find("\n        [Maddy's Stats]\n")
+    end_pos = history_str.find("\n        \n", start_pos)
+
+    if start_pos != -1 and end_pos != -1:
+        # Remove the "Maddy's Stats" block
+        history_str = history_str[:start_pos] + history_str[end_pos + 10:]
+
+    # Find the start and end positions of the "Physical Appearance:" part
+    start_pos = history_str.find("[Physical Appearance:")
+    end_pos = history_str.find("]", start_pos)
+
+    if start_pos != -1 and end_pos != -1:
+        # Remove the "Physical Appearance:" part
+        history_str = history_str[:start_pos] + history_str[end_pos + 1:]
+
+    # Parse the modified history string back to its original structure
+    history = json.loads(history_str)
+
+    print(f'\n\n\nHere is what is in the history:\n\n\n{history}\n\n\n\nEnd of test')
+
+    return history
+
+
+def output_modifier(string, state, is_chat=False):
+    food_matches = re.findall(r"\{([^}]+)\s*:\s*(\d+)\}", string)
+
+    for food_item, calories in food_matches:
+        character_stats.add_calories(int(calories))
+        fullness_status = character_stats.calculate_fullness()
+
+        string = f"""\n*[{character_stats.name} just ate {food_item}*\n*After eating this, {character_stats.name} is feeling {fullness_status}.*]
+        [So far she has consumed {int(character_stats.current_calories)} out of {character_stats.max_calories} calories today]
+        \n{string}"""
+
+    return string
+
 
 def chat_input_modifier(text, visible_text, state):
     is_new_chat = len(state['history']['internal']) == 1
@@ -266,50 +316,66 @@ def chat_input_modifier(text, visible_text, state):
         character_stats.add_calories(int(calories))
         fullness_status = character_stats.calculate_fullness()
         food_messages.append(
-            f"\n*{character_stats.name} just ate {food_item}*\n*After eating this, {character_stats.name} is feeling {fullness_status}.*")
+            f"\n*[{character_stats.name} just ate {food_item}*\n*After eating this, {character_stats.name} is feeling {fullness_status}.*]")
 
     # Create stats context
-    stats_context = stat_prompt()
-    
-    # Append food and end day messages to the stats context
+    new_stats_context = stat_prompt()
+
+    # Append food and end day messages to the new stats context
     if end_day_message:
-        stats_context += "\n".join(end_day_message)
-    
+        new_stats_context += "\n".join(end_day_message)
+
     if food_messages:
-        stats_context += "\n".join(food_messages)
-    
+        new_stats_context += "\n".join(food_messages)
+
     bmi = character_stats.bmi_int()
-    
+
     # Initialize physical_attributes with a default value
     physical_attributes = ""
-    
+
     # Look up the row corresponding to the calculated BMI
     row = df.loc[df['BMI'] == int(bmi)]
-    
+
     if not row.empty:
         # Extract the relevant data from the row
         data = row['Phys'].values[0]
 
         # Replace {character_stats.name} with the actual value
         physical = data.format(character_stats=character_stats)
-        
+
         # Assign the data to physical_attributes
-        physical_attributes = f"\n[{character_stats.name} physical appearance stats: {physical}]"
-    
+        physical_attributes = f"\n[Physical Appearance: {physical}]"
+
     # Check for story and modify text accordingly
     if is_new_chat or end_day_called or character_stats.inject_stats:
-        modified_text = f"{stats_context}\n{physical_attributes}\n{text}"
-        modified_visible_text = f"{stats_context}\n{physical_attributes}\n{visible_text}"
+        modified_visible_text = f"{new_stats_context}\n{visible_text}"
     elif food_matches:
-        modified_text = f"{stats_context}\n{text}"
-        modified_visible_text = f"{stats_context}\n{visible_text}"
+        modified_visible_text = f"{new_stats_context}\n{visible_text}"
     else:
-        modified_text = text
         modified_visible_text = visible_text
 
-    text = modified_text
+    # Find the index of the last occurrence of square bracket content in text
+    last_bracket_index = text.rfind('[')
+
+    if last_bracket_index != -1:
+        # Split the text into previous_text and current_prompt
+        previous_text = text[:last_bracket_index]
+        current_prompt = text[last_bracket_index:]
+
+        # Remove square bracket content from the previous_text
+        previous_text = re.sub(r'\[[^\]]*\]', '', previous_text)
+
+        # Combine the previous_text, current_prompt, new_stats_context, and physical_attributes
+        text = f"{new_stats_context}\n{physical_attributes}\n{previous_text}\n{current_prompt}"
+    else:
+        # If no square bracket content is found, append the new_stats_context and physical_attributes to the existing text
+        text = f"{new_stats_context}\n{physical_attributes}\n{text}"
+
     visible_text = modified_visible_text
-    
+
+    print(f'\n\n\nHere is what the AI Sees:\n\n\n{text}\n\n\n\nEnd of test')
+    print(f'\n\n\nHere is what you see:\n\n\n{visible_text}\n\n\n\nEnd of test')
+
     return text, visible_text
 
 def ui():
