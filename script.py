@@ -243,7 +243,9 @@ def stat_prompt():
         [Age: {character_stats.age} years old]
         [Height: {feet}'{inches} inches tall]
         [Weight: {character_stats.weight} lbs]
+        [BMI: {character_stats.calculate_bmi()}] 
         [Weight Gained: {int(character_stats.weight_diff)} lbs since {character_stats.start_date.strftime('%B %d, %Y')}]
+        [Calories Consumed: {character_stats.current_calories} / {character_stats.max_calories} cal.]
         [Fullness: {character_stats.calculate_fullness()}]
         """
     )
